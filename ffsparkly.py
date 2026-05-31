@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
+
 import colorsys
-import math
 import os
 import sys
 import termios
@@ -15,6 +15,7 @@ RESET = "\x1b[0m"
 HOME = "\x1b[H"
 CLEAR = "\x1b[2J"
 PROMPT = " Press any key to exit "
+BORING_COLOR_SCHEME = "\x1b[1;30;47m"
 
 
 def terminal_size() -> tuple[int, int]:
@@ -53,7 +54,7 @@ def rainbow_plus_grid(width: int, height: int) -> str:
 def centered_prompt(width: int, height: int) -> str:
     row = max(1, height // 2 + 1)
     col = max(1, (width - len(PROMPT)) // 2 + 1)
-    return f"\x1b[{row};{col}H\x1b[1;30;47m{PROMPT}{RESET}"
+    return f"{background_rgb(0, 0, 0)}{foreground_rgb(5, 5, 5)}\x1b[{row};{col}H{PROMPT}{RESET}"
 
 
 def draw() -> None:
