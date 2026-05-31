@@ -2,6 +2,7 @@
 
 import colorsys
 import os
+import select
 import sys
 import termios
 import tty
@@ -15,7 +16,7 @@ RESET = "\x1b[0m"
 HOME = "\x1b[H"
 CLEAR = "\x1b[2J"
 PROMPT = " Press any key to exit "
-BORING_COLOR_SCHEME = "\x1b[1;30;47m"
+FRAME_SECONDS = 0.1
 
 
 def terminal_size() -> tuple[int, int]:
@@ -30,21 +31,31 @@ def terminal_size() -> tuple[int, int]:
 def foreground_rgb(red: int, green: int, blue: int) -> str:
     return f"\x1b[38;5;{16 + 36 * red + 6 * green + blue}m"
 
+
 def background_rgb(red: int, green: int, blue: int) -> str:
     return f"\x1b[48;5;{16 + 36 * red + 6 * green + blue}m"
 
 
-def rainbow_plus_grid(width: int, height: int) -> str:
+def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
     lines = []
+    scroll = frame * 0.08
 
     for y in range(height):
         line = []
         for x in range(width):
-            hue = ((x * 2.0) / max(width, 1) + (y * 3.0) / max(height, 1)) % 1.0
+            hue = (
+                ((x * 2.0) / max(width, 1))
+                + ((y * 3.0) / max(height, 1))
+                + scroll
+            ) % 1.0
             red, green, blue = colorsys.hsv_to_rgb(hue, 0.9, 1.0)
-            print(red, green, blue)
+            color = (
+                int(red * 5 + 0.5) % 6,
+                int(green * 5 + 0.5) % 6,
+                int(blue * 5 + 0.5) % 6,
+            )
             line.append(
-                f"{background_rgb(int(red * 5 + 0.5) % 6, int(green * 5 + 0.5) % 6, int(blue * 5 +0.5) % 6)} "
+                f"{background_rgb(*color)}{foreground_rgb(5, 5, 5)} "
             )
         lines.append("".join(line))
 
@@ -57,16 +68,25 @@ def centered_prompt(width: int, height: int) -> str:
     return f"{background_rgb(0, 0, 0)}{foreground_rgb(5, 5, 5)}\x1b[{row};{col}H{PROMPT}{RESET}"
 
 
-def draw() -> None:
+def draw(frame: int) -> None:
     width, height = terminal_size()
     sys.stdout.write(HOME + CLEAR)
-    sys.stdout.write(rainbow_plus_grid(width, height))
+    sys.stdout.write(rainbow_plus_grid(width, height, frame))
     sys.stdout.write(centered_prompt(width, height))
     sys.stdout.flush()
 
 
 def wait_for_keypress() -> None:
-    sys.stdin.read(1)
+    frame = 0
+
+    while True:
+        readable, _, _ = select.select([sys.stdin], [], [], FRAME_SECONDS)
+        if readable:
+            sys.stdin.read(1)
+            return
+
+        frame += 1
+        draw(frame)
 
 
 def main() -> int:
@@ -79,7 +99,7 @@ def main() -> int:
     try:
         tty.setcbreak(sys.stdin.fileno())
         sys.stdout.write(ALT_SCREEN_ON + CURSOR_HIDE)
-        draw()
+        draw(0)
         wait_for_keypress()
     finally:
         termios.tcsetattr(
