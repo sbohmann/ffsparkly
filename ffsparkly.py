@@ -66,7 +66,7 @@ def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
 
 
 def centered_prompt(width: int, height: int) -> str:
-    row = max(1, height // 2 + 1)
+    row = max(1, height // 2)
     col = max(1, (width - len(PROMPT)) // 2 + 1)
     return f"{background_color(rgb(0, 0, 0))}{foreground_color(rgb(5, 5, 5))}\x1b[{row};{col}H{PROMPT}{RESET}"
 
