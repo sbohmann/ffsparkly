@@ -28,12 +28,15 @@ def terminal_size() -> tuple[int, int]:
     return max(size.columns, 1), max(size.lines, 1)
 
 
-def foreground_rgb(red: int, green: int, blue: int) -> str:
-    return f"\x1b[38;5;{16 + 36 * red + 6 * green + blue}m"
+def foreground_color(color: int) -> str:
+    return f"\x1b[38;5;{color}m"
+
+def background_color(color: int) -> str:
+    return f"\x1b[48;5;{color}m"
 
 
-def background_rgb(red: int, green: int, blue: int) -> str:
-    return f"\x1b[48;5;{16 + 36 * red + 6 * green + blue}m"
+def rgb(red: int, green: int, blue: int) -> int:
+    return 16 + 36 * red + 6 * green + blue
 
 
 def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
@@ -55,7 +58,7 @@ def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
                 int(blue * 5 + 0.5) % 6,
             )
             line.append(
-                f"{background_rgb(*color)}{foreground_rgb(5, 5, 5)} "
+                f"{background_color(rgb(*color))}{foreground_color(rgb(5, 5, 5))} "
             )
         lines.append("".join(line))
 
@@ -65,7 +68,7 @@ def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
 def centered_prompt(width: int, height: int) -> str:
     row = max(1, height // 2 + 1)
     col = max(1, (width - len(PROMPT)) // 2 + 1)
-    return f"{background_rgb(0, 0, 0)}{foreground_rgb(5, 5, 5)}\x1b[{row};{col}H{PROMPT}{RESET}"
+    return f"{background_color(rgb(0, 0, 0))}{foreground_color(rgb(5, 5, 5))}\x1b[{row};{col}H{PROMPT}{RESET}"
 
 
 def draw(frame: int) -> None:
