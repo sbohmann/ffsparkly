@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+import asyncio
 import colorsys
+import contextlib
 import os
-import select
 import sys
 import termios
 import tty
@@ -79,17 +80,38 @@ def draw(frame: int) -> None:
     sys.stdout.flush()
 
 
-def animate_until_keypress() -> None:
+async def animate() -> None:
     frame = 0
-    draw(frame)
     while True:
-        readable, _, _ = select.select([sys.stdin], [], [], FRAME_SECONDS)
-        if readable:
-            sys.stdin.read(1)
-            return
-
-        frame += 1
         draw(frame)
+        frame += 1
+        await asyncio.sleep(FRAME_SECONDS)
+
+
+async def wait_for_keypress() -> None:
+    loop = asyncio.get_running_loop()
+    keypress = loop.create_future()
+
+    def on_keypress() -> None:
+        if not keypress.done():
+            sys.stdin.read(1)
+            keypress.set_result(None)
+
+    loop.add_reader(sys.stdin.fileno(), on_keypress)
+    try:
+        await keypress
+    finally:
+        loop.remove_reader(sys.stdin.fileno())
+
+
+async def animate_until_keypress() -> None:
+    animation = asyncio.create_task(animate())
+    try:
+        await wait_for_keypress()
+    finally:
+        animation.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await animation
 
 
 def main() -> int:
@@ -102,7 +124,7 @@ def main() -> int:
     try:
         tty.setcbreak(sys.stdin.fileno())
         sys.stdout.write(ALT_SCREEN_ON + CURSOR_HIDE + CLEAR)
-        animate_until_keypress()
+        asyncio.run(animate_until_keypress())
     finally:
         termios.tcsetattr(
             sys.stdin.fileno(), termios.TCSADRAIN, original_terminal_settings
