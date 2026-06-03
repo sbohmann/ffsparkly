@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import colorsys
 import os
 import select
@@ -30,6 +29,7 @@ def terminal_size() -> tuple[int, int]:
 
 def foreground_color(color: int) -> str:
     return f"\x1b[38;5;{color}m"
+
 
 def background_color(color: int) -> str:
     return f"\x1b[48;5;{color}m"
@@ -79,9 +79,9 @@ def draw(frame: int) -> None:
     sys.stdout.flush()
 
 
-def wait_for_keypress() -> None:
+def animate_until_keypress() -> None:
     frame = 0
-
+    draw(frame)
     while True:
         readable, _, _ = select.select([sys.stdin], [], [], FRAME_SECONDS)
         if readable:
@@ -101,9 +101,8 @@ def main() -> int:
 
     try:
         tty.setcbreak(sys.stdin.fileno())
-        sys.stdout.write(ALT_SCREEN_ON + CURSOR_HIDE)
-        draw(0)
-        wait_for_keypress()
+        sys.stdout.write(ALT_SCREEN_ON + CURSOR_HIDE + CLEAR)
+        animate_until_keypress()
     finally:
         termios.tcsetattr(
             sys.stdin.fileno(), termios.TCSADRAIN, original_terminal_settings
