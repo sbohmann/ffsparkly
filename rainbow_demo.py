@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-
+import asyncio
 import colorsys
+import contextlib
 import os
-import select
 import sys
 import termios
 import tty
@@ -15,6 +15,8 @@ CURSOR_SHOW = "\x1b[?25h"
 RESET = "\x1b[0m"
 HOME = "\x1b[H"
 CLEAR = "\x1b[2J"
+START_FRAME = "\x1b[?2026h"
+END_FRAME = "\x1b[?2026l"
 PROMPT = " Press any key to exit "
 FRAME_SECONDS = 0.1
 
@@ -28,12 +30,16 @@ def terminal_size() -> tuple[int, int]:
     return max(size.columns, 1), max(size.lines, 1)
 
 
-def foreground_rgb(red: int, green: int, blue: int) -> str:
-    return f"\x1b[38;5;{16 + 36 * red + 6 * green + blue}m"
+def foreground_color(color: int) -> str:
+    return f"\x1b[38;5;{color}m"
 
 
-def background_rgb(red: int, green: int, blue: int) -> str:
-    return f"\x1b[48;5;{16 + 36 * red + 6 * green + blue}m"
+def background_color(color: int) -> str:
+    return f"\x1b[48;5;{color}m"
+
+
+def rgb(red: int, green: int, blue: int) -> int:
+    return 16 + 36 * red + 6 * green + blue
 
 
 def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
@@ -55,7 +61,7 @@ def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
                 int(blue * 5 + 0.5) % 6,
             )
             line.append(
-                f"{background_rgb(*color)}{foreground_rgb(5, 5, 5)} "
+                f"{background_color(rgb(*color))}{foreground_color(rgb(5, 5, 5))} "
             )
         lines.append("".join(line))
 
@@ -63,30 +69,53 @@ def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
 
 
 def centered_prompt(width: int, height: int) -> str:
-    row = max(1, height // 2 + 1)
+    row = max(1, height // 2)
     col = max(1, (width - len(PROMPT)) // 2 + 1)
-    return f"{background_rgb(0, 0, 0)}{foreground_rgb(5, 5, 5)}\x1b[{row};{col}H{PROMPT}{RESET}"
+    return f"{background_color(rgb(0, 0, 0))}{foreground_color(rgb(5, 5, 5))}\x1b[{row};{col}H{PROMPT}{RESET}"
 
 
 def draw(frame: int) -> None:
     width, height = terminal_size()
-    sys.stdout.write(HOME)
-    sys.stdout.write(rainbow_plus_grid(width, height, frame))
-    sys.stdout.write(centered_prompt(width, height))
+    sys.stdout.write(START_FRAME +
+                     HOME +
+                     rainbow_plus_grid(width, height, frame) +
+                     centered_prompt(width, height) +
+                     END_FRAME)
     sys.stdout.flush()
 
 
-def wait_for_keypress() -> None:
+async def animate() -> None:
     frame = 0
-
     while True:
-        readable, _, _ = select.select([sys.stdin], [], [], FRAME_SECONDS)
-        if readable:
-            sys.stdin.read(1)
-            return
-
-        frame += 1
         draw(frame)
+        frame += 1
+        await asyncio.sleep(FRAME_SECONDS)
+
+
+async def wait_for_keypress() -> None:
+    loop = asyncio.get_running_loop()
+    keypress = loop.create_future()
+
+    def on_keypress() -> None:
+        if not keypress.done():
+            sys.stdin.read(1)
+            keypress.set_result(None)
+
+    loop.add_reader(sys.stdin.fileno(), on_keypress)
+    try:
+        await keypress
+    finally:
+        loop.remove_reader(sys.stdin.fileno())
+
+
+async def animate_until_keypress() -> None:
+    animation = asyncio.create_task(animate())
+    try:
+        await wait_for_keypress()
+    finally:
+        animation.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await animation
 
 
 def main() -> int:
@@ -98,9 +127,8 @@ def main() -> int:
 
     try:
         tty.setcbreak(sys.stdin.fileno())
-        sys.stdout.write(ALT_SCREEN_ON + CURSOR_HIDE)
-        draw(0)
-        wait_for_keypress()
+        sys.stdout.write(ALT_SCREEN_ON + CURSOR_HIDE + CLEAR)
+        asyncio.run(animate_until_keypress())
     finally:
         termios.tcsetattr(
             sys.stdin.fileno(), termios.TCSADRAIN, original_terminal_settings

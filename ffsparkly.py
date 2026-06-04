@@ -15,6 +15,8 @@ CURSOR_SHOW = "\x1b[?25h"
 RESET = "\x1b[0m"
 HOME = "\x1b[H"
 CLEAR = "\x1b[2J"
+START_FRAME = "\x1b[?2026h"
+END_FRAME = "\x1b[?2026l"
 PROMPT = " Press any key to exit "
 FRAME_SECONDS = 0.1
 
@@ -74,9 +76,11 @@ def centered_prompt(width: int, height: int) -> str:
 
 def draw(frame: int) -> None:
     width, height = terminal_size()
-    sys.stdout.write(HOME)
-    sys.stdout.write(rainbow_plus_grid(width, height, frame))
-    sys.stdout.write(centered_prompt(width, height))
+    sys.stdout.write(START_FRAME +
+                     HOME +
+                     rainbow_plus_grid(width, height, frame) +
+                     centered_prompt(width, height) +
+                     END_FRAME)
     sys.stdout.flush()
 
 
