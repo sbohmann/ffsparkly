@@ -18,7 +18,7 @@ CLEAR = "\x1b[2J"
 START_FRAME = "\x1b[?2026h"
 END_FRAME = "\x1b[?2026l"
 PROMPT = " Press any key to exit "
-FRAME_SECONDS = 0.1
+FRAME_MS = 100
 
 
 def terminal_size() -> tuple[int, int]:
@@ -93,7 +93,7 @@ class Timer:
         initial_time_ms = time.time_ns() // 1_000_000
         time_to_sleep_ms = self._interval_ms
         while True:
-            await asyncio.sleep(time_to_sleep_ms)
+            await asyncio.sleep(time_to_sleep_ms / 1000.0)
             self._action()
             time_now_ms = time.time_ns() // 1_000_000
             offset_ms = (time_now_ms - initial_time_ms) % self._interval_ms
@@ -105,14 +105,6 @@ class Timer:
         self._task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await self._task
-
-
-async def animate() -> None:
-    frame = 0
-    while True:
-        draw(frame)
-        frame += 1
-        await asyncio.sleep(FRAME_SECONDS)
 
 
 class Animation:
