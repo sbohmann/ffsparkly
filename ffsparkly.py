@@ -67,10 +67,11 @@ def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
     return "\n".join(lines)
 
 
-def centered_prompt(width: int, height: int) -> str:
+def centered_prompt(width: int, height: int, frame: int) -> str:
+    output = f"Frame {frame}: {PROMPT}"
     row = max(1, height // 2)
-    col = max(1, (width - len(PROMPT)) // 2 + 1)
-    return f"{background_color(rgb(0, 0, 0))}{foreground_color(rgb(5, 5, 5))}\x1b[{row};{col}H{PROMPT}{RESET}"
+    col = max(1, (width - len(output)) // 2 + 1)
+    return f"{background_color(rgb(0, 0, 0))}{foreground_color(rgb(5, 5, 5))}\x1b[{row};{col}H{output}"
 
 
 def draw(frame: int) -> None:
@@ -78,7 +79,7 @@ def draw(frame: int) -> None:
     sys.stdout.write(START_FRAME +
                      HOME +
                      rainbow_plus_grid(width, height, frame) +
-                     centered_prompt(width, height) +
+                     centered_prompt(width, height, frame) +
                      END_FRAME)
     sys.stdout.flush()
 
@@ -134,6 +135,7 @@ async def wait_for_keypress() -> None:
 
 async def animate_until_keypress() -> None:
     animation = Animation()
+    animation.step()
     timer = Timer(FRAME_MS, lambda: animation.step())
     try:
         await wait_for_keypress()
