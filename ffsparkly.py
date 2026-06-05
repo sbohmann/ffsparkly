@@ -17,7 +17,7 @@ HOME = "\x1b[H"
 CLEAR = "\x1b[2J"
 START_FRAME = "\x1b[?2026h"
 END_FRAME = "\x1b[?2026l"
-PROMPT = " Press any key to exit "
+PROMPT = "Press any key to exit"
 FRAME_MS = 100
 
 
@@ -68,7 +68,7 @@ def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
 
 
 def centered_prompt(width: int, height: int, frame: int) -> str:
-    output = f"Frame {frame}: {PROMPT}"
+    output = f" Frame {frame}: {PROMPT} "
     row = max(1, height // 2)
     col = max(1, (width - len(output)) // 2 + 1)
     return f"{background_color(rgb(0, 0, 0))}{foreground_color(rgb(5, 5, 5))}\x1b[{row};{col}H{output}"
