@@ -134,11 +134,11 @@ async def wait_for_keypress() -> None:
 
 async def animate_until_keypress() -> None:
     animation = Animation()
-    timer = Timer(FRAME_SECONDS, lambda: animation.step())
+    timer = Timer(FRAME_MS, lambda: animation.step())
     try:
         await wait_for_keypress()
     finally:
-        timer.stop()
+        await timer.stop()
 
 
 def main() -> int:
