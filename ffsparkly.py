@@ -18,7 +18,7 @@ CLEAR = "\x1b[2J"
 START_FRAME = "\x1b[?2026h"
 END_FRAME = "\x1b[?2026l"
 PROMPT = "Press any key to exit"
-FRAME_MS = 100
+FRAME_MS = 500
 
 
 def terminal_size() -> tuple[int, int]:
@@ -86,21 +86,23 @@ def draw(frame: int) -> None:
 
 class Timer:
     def __init__(self, interval_ms, action):
+        if interval_ms <= 0:
+            raise ValueError(f"interval_ms [{interval_ms}] must be positive")
         self._interval_ms = interval_ms
         self._action = action
         self._task = asyncio.create_task(self._run())
 
     async def _run(self):
-        initial_time_ms = time.time_ns() // 1_000_000
+        initial_time_ms = time.monotonic_ns() // 1_000_000
         time_to_sleep_ms = self._interval_ms
         while True:
             await asyncio.sleep(time_to_sleep_ms / 1000.0)
             self._action()
-            time_now_ms = time.time_ns() // 1_000_000
+            time_now_ms = time.monotonic_ns() // 1_000_000
             offset_ms = (time_now_ms - initial_time_ms) % self._interval_ms
-            while offset_ms < 0:
-                offset_ms += self._interval_ms
             time_to_sleep_ms = self._interval_ms - offset_ms
+            if time_to_sleep_ms < self._interval_ms // 2:
+                time_to_sleep_ms += self._interval_ms
 
     async def stop(self):
         self._task.cancel()
