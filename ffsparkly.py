@@ -42,13 +42,19 @@ def rgb(red: int, green: int, blue: int) -> int:
     return 16 + 36 * red + 6 * green + blue
 
 
-def rainbow_plus_grid(width: int, height: int, frame: int) -> str:
+def border(width: int, height: int, frame: int) -> str:
     lines = []
     scroll = frame * 0.08
 
     for y in range(height):
         line = []
         for x in range(width):
+            if 0 < y < height - 1:
+                if 1 < x < width - 2:
+                    line.append(
+                        f"{background_color(0)}{foreground_color(0)} "
+                    )
+                    continue
             hue = (((x * 2.0) / max(width, 1))
                    + ((y * 3.0) / max(height, 1))
                    + scroll
@@ -78,7 +84,7 @@ def draw(frame: int) -> None:
     width, height = terminal_size()
     sys.stdout.write(START_FRAME +
                      HOME +
-                     rainbow_plus_grid(width, height, frame) +
+                     border(width, height, frame) +
                      centered_prompt(width, height, frame) +
                      END_FRAME)
     sys.stdout.flush()
@@ -135,7 +141,7 @@ async def wait_for_keypress() -> None:
         loop.remove_reader(sys.stdin.fileno())
 
 
-async def animate_until_keypress() -> None:
+async def run() -> None:
     animation = Animation()
     animation.step()
     timer = Timer(FRAME_MS, lambda: animation.step())
@@ -155,7 +161,7 @@ def main() -> int:
     try:
         tty.setcbreak(sys.stdin.fileno())
         sys.stdout.write(ALT_SCREEN_ON + CURSOR_HIDE + CLEAR)
-        asyncio.run(animate_until_keypress())
+        asyncio.run(run())
     finally:
         termios.tcsetattr(
             sys.stdin.fileno(), termios.TCSADRAIN, original_terminal_settings
